@@ -2,6 +2,7 @@ import numpy as np
 import warnings
 import os
 from torch.utils.data import Dataset
+import matplotlib.pyplot as plt
 warnings.filterwarnings('ignore')
 
 def pc_normalize(pc):
@@ -94,15 +95,42 @@ class ModelNetDataLoader(Dataset):
     def __getitem__(self, index):
         return self._get_item(index)
 
+def show_point_cloud(tuple,seg_label=[],title=None):
+    import matplotlib.pyplot as plt
+    if seg_label == []:
+        x = [x[0] for x in tuple]
+        y = [y[1] for y in tuple]
+        z = [z[2] for z in tuple]
+        ax = plt.subplot(111, projection='3d')
+        ax.scatter(x, y, z, c='b', cmap='spectral')
+        ax.set_zlabel('Z')
+        ax.set_ylabel('Y')
+        ax.set_xlabel('X')
+    else:
+        category = list(np.unique(seg_label))
+        color = ['b','r','g','y','w','b','p']
+        ax = plt.subplot(111, projection='3d')
+        for categ_index in range(len(category)):
+            tuple_seg = tuple[seg_label == category[categ_index]]
+            x = [x[0] for x in tuple_seg]
+            y = [y[1] for y in tuple_seg]
+            z = [z[2] for z in tuple_seg]
+            ax.scatter(x, y, z, c=color[categ_index], cmap='spectral')
+        ax.set_zlabel('Z')
+        ax.set_ylabel('Y')
+        ax.set_xlabel('X')
+    plt.title(title)
+    plt.show()
 
 if __name__ == '__main__':
     import torch
 
-    data = ModelNetDataLoader('./data/modelnet40_normal_resampled/',split='train', uniform=False, normal_channel=True,)
+    data = ModelNetDataLoader('/media/ken/B60A03C60A03829B/data/modelnet40_normal_resampled/',split='train', uniform=False, normal_channel=True,)
     DataLoader = torch.utils.data.DataLoader(data, batch_size=12, shuffle=True)
     for point,label in DataLoader:
         import ipdb; ipdb.set_trace()
         print(point.shape)
         print(label.shape)
+        show_point_cloud(point[0])
 
 

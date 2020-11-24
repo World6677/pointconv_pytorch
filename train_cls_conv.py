@@ -60,7 +60,7 @@ def main(args):
 
     '''DATA LOADING'''
     logger.info('Load dataset ...')
-    DATA_PATH = './data/modelnet40_normal_resampled/'
+    DATA_PATH = '/media/ken/B60A03C60A03829B/data/modelnet40_normal_resampled/'
 
     TRAIN_DATASET = ModelNetDataLoader(root=DATA_PATH, npoint=args.num_point, split='train', normal_channel=args.normal)
     TEST_DATASET = ModelNetDataLoader(root=DATA_PATH, npoint=args.num_point, split='test', normal_channel=args.normal)

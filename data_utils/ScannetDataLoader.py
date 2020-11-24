@@ -177,4 +177,4 @@ if __name__ == '__main__':
     import ipdb;ipdb.set_trace()
     print(points.shape)
     print(target.shape)
-    show_point_cloud(points, target)
+    show_point_cloud(points[0], list(target[0]))

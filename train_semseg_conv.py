@@ -15,7 +15,7 @@ import time
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 ROOT_DIR = BASE_DIR
-sys.path.append(os.path.join(ROOT_DIR, 'models'))
+sys.path.append(os.path.join(ROOT_DIR, 'model'))
 
 
 classes = ['0','1','2','3','4','5','6','7','8','9','10','11','12', '13','14','15','16','17','18','19','20']
@@ -36,11 +36,10 @@ def parse_args():
     parser.add_argument('--optimizer', type=str, default='Adam', help='Adam or SGD [default: Adam]')
     parser.add_argument('--log_dir', type=str, default=None, help='Log path [default: None]')
     parser.add_argument('--decay_rate', type=float, default=1e-4, help='weight decay [default: 1e-4]')
-    parser.add_argument('--npoint', type=int,  default=2048, help='Point Number [default: 4096]')
+    parser.add_argument('--npoint', type=int,  default=512, help='Point Number [default: 4096]')
     parser.add_argument('--step_size', type=int,  default=10, help='Decay step for lr decay [default: every 10 epochs]')
     parser.add_argument('--lr_decay', type=float,  default=0.7, help='Decay rate for lr decay [default: 0.7]')
     parser.add_argument('--test_area', type=int, default=5, help='Which area to use for test, option: 1-6 [default: 5]')
-
     return parser.parse_args()
 
 def main(args):
@@ -80,7 +79,7 @@ def main(args):
     log_string(args)
 
     root = '/media/ken/B60A03C60A03829B/data/scannet'
-    NUM_CLASSES = 13
+    NUM_CLASSES = 21
     NUM_POINT = args.npoint
     BATCH_SIZE = args.batch_size
 
@@ -93,15 +92,15 @@ def main(args):
     trainDataLoader = torch.utils.data.DataLoader(TRAIN_DATASET, batch_size=BATCH_SIZE, shuffle=True, num_workers=4, pin_memory=True, drop_last=True, worker_init_fn = lambda x: np.random.seed(x+int(time.time())))
     testDataLoader = torch.utils.data.DataLoader(TEST_DATASET, batch_size=BATCH_SIZE, shuffle=False, num_workers=4, pin_memory=True, drop_last=True)
 
-    weights = torch.Tensor(TRAIN_DATASET.labelweights).cuda()
+    weights = torch.Tensor(TRAIN_DATASET.labelweights)
 
     log_string("The number of training data is: %d" % len(TRAIN_DATASET))
     log_string("The number of test data is: %d" % len(TEST_DATASET))
 
     '''MODEL LOADING'''
     MODEL = importlib.import_module(args.model)
-    shutil.copy('models/%s.py' % args.model, str(experiment_dir))
-    shutil.copy('models/pointnet_util.py', str(experiment_dir))
+    shutil.copy('model/%s.py' % args.model, str(experiment_dir))
+    shutil.copy('utils/pointconv_util.py', str(experiment_dir))
 
     classifier = MODEL.get_model(NUM_CLASSES).cuda()
     criterion = MODEL.get_loss().cuda()
@@ -165,7 +164,7 @@ def main(args):
         total_seen = 0
         loss_sum = 0
         for i, data in tqdm(enumerate(trainDataLoader), total=len(trainDataLoader), smoothing=0.9):
-            points, target = data
+            points, target,_ = data
             points = points.data.numpy()
             points[:,:, :3] = provider.rotate_point_cloud_z(points[:,:, :3])
             points = torch.Tensor(points)
@@ -177,7 +176,7 @@ def main(args):
             seg_pred = seg_pred.contiguous().view(-1, NUM_CLASSES)
             batch_label = target.view(-1, 1)[:, 0].cpu().data.numpy()
             target = target.view(-1, 1)[:, 0]
-            loss = criterion(seg_pred, target, trans_feat, weights)
+            loss = criterion(seg_pred, target, trans_feat, weights.cuda())
             loss.backward()
             optimizer.step()
             pred_choice = seg_pred.cpu().data.max(1)[1].numpy()
@@ -223,7 +222,7 @@ def main(args):
                 seg_pred = seg_pred.contiguous().view(-1, NUM_CLASSES)
                 batch_label = target.cpu().data.numpy()
                 target = target.view(-1, 1)[:, 0]
-                loss = criterion(seg_pred, target, trans_feat, weights)
+                loss = criterion(seg_pred, target, trans_feat, weights.cuda())
                 loss_sum += loss
                 pred_val = np.argmax(pred_val, 2)
                 correct = np.sum((pred_val == batch_label))
